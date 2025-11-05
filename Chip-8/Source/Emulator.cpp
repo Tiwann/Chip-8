@@ -8,6 +8,9 @@ using namespace Nova::Rendering;
 using namespace Nova::Memory;
 
 
+Emulator::Emulator() : Object("Chip-8 Emulator")
+{
+}
 
 bool Emulator::Initialize()
 {
@@ -24,7 +27,7 @@ void Emulator::Update(const float deltaTime)
 
 void Emulator::CpuCycle()
 {
-    const uint16_t opcode = (m_Memory[m_ProgramCounter] << 8) | m_Memory[m_ProgramCounter + 1];
+    const uint16_t opcode = Read(m_ProgramCounter);
     m_ProgramCounter += 2;
     ExecuteOpcode(opcode);
 }
@@ -58,5 +61,18 @@ bool Emulator::LoadROM(StringView filepath)
     stream.Close();
     romLoaded = true;
     return true;
+}
+
+uint16_t Emulator::Read(const uint16_t address)
+{
+    if (address > MEMORY_SIZE) return 0;
+    const uint16_t* memory = (uint16_t*)&m_Memory[address];
+    m_ProgramCounter += sizeof(uint16_t);
+    return *memory;
+}
+
+void Emulator::Write(const uint16_t address, const uint8_t data)
+{
+    m_Memory[address] = data;
 }
 

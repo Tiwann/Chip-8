@@ -1,8 +1,10 @@
 ﻿#pragma once
 #include "Stack.h"
+#include "Containers/StringView.h"
 #include <cstdint>
 
-#include "Containers/StringView.h"
+#include "Runtime/Object.h"
+
 
 namespace Nova::Rendering
 {
@@ -19,7 +21,7 @@ enum Register
     VC, VD, VE, VF, REG_COUNT
 };
 
-class Emulator
+class Emulator : public Nova::Object
 {
 public:
     static constexpr uint16_t MEMORY_SIZE = 0x1000;
@@ -46,6 +48,9 @@ public:
         0xF0,0x80,0xF0,0x80,0x80  // F
     };
 
+    Emulator();
+    ~Emulator() override = default;
+    
     bool Initialize();
     void Update(float deltaTime);
     void Render(CommandBuffer& cmdBuffer);
@@ -53,12 +58,19 @@ public:
 
     bool LoadROM(Nova::StringView filepath);
 protected:
+    uint16_t Read(uint16_t address);
+    void Write(uint16_t address, uint8_t data);
     void CpuCycle();
     void ExecuteOpcode(uint16_t opcode);
+
+
 private:
     bool romLoaded = false;
+
     uint16_t m_Registers[REGISTER_COUNT]{};
     uint8_t m_Memory[MEMORY_SIZE]{};
-    Stack<uint16_t, STACK_SIZE> m_Stack;
     uint16_t m_ProgramCounter = 0;
+
+    Stack<uint16_t, STACK_SIZE> m_Stack;
+    uint16_t m_StackPointer = 0;
 };

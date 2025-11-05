@@ -8,6 +8,7 @@
 #include "Rendering/GraphicsPipeline.h"
 #include "Rendering/Sampler.h"
 #include "Rendering/Shader.h"
+#include "Runtime/DesktopWindow.h"
 
 
 using namespace Nova;
@@ -66,43 +67,36 @@ void EmulatorApplication::OnInit()
     .setRenderPass(GetRenderPass());
     m_Pipeline = device->CreateGraphicsPipeline(gpCreateInfo);
 
-    window->resizeEvent.Bind([&device, &texCreateInfo, &gpCreateInfo, this](const uint32_t newWidth, const uint32_t newHeight) mutable
+    window->resizeEvent.Bind([this](const uint32_t newWidth, const uint32_t newHeight)
     {
-        device->WaitIdle();
+        Ref<Device>& device = GetDevice();
 
-        const TextureCreateInfo newTexCreateInfo = TextureCreateInfo(texCreateInfo)
-        .withWidth(newWidth).withHeight(newHeight);
+        const GraphicsPipelineCreateInfo graphicsPipelineCreateInfo = GraphicsPipelineCreateInfo()
+        .setViewportInfo({0, 0, newWidth, newHeight})
+        .setScissorInfo({0, 0, newWidth, newHeight})
+        .setShader(m_Shader)
+        .setRenderPass(GetRenderPass())
+        .setDevice(device);
 
-        m_Texture->Destroy();
-        m_Texture = device->CreateTexture(newTexCreateInfo);
-
-        const GraphicsPipelineCreateInfo newGpCreateInfo = GraphicsPipelineCreateInfo(gpCreateInfo)
-        .setViewportInfo({0, 0, newWidth, newHeight, 0.0f, 1.0})
-        .setScissorInfo({0, 0, newWidth, newHeight});
-
-        m_Pipeline->Destroy();
-        m_Pipeline = device->CreateGraphicsPipeline(newGpCreateInfo);
+        m_Pipeline->Initialize(graphicsPipelineCreateInfo);
     });
 
 
-    if (!m_Emulator.Initialize())
-        Exit();
-
-    const String romPath = Path::GetAssetPath("Airplane.ch8");
-    if (!m_Emulator.LoadROM(romPath))
+    m_Emulator = new Emulator();
+    if (!m_Emulator->Initialize())
         Exit();
 }
 
 void EmulatorApplication::OnUpdate(const float deltaTime)
 {
-    m_Emulator.Update(deltaTime);
+    m_Emulator->Update(deltaTime);
 
     m_BindingSet->BindCombinedSamplerTexture(0, m_Sampler, m_Texture);
 }
 
 void EmulatorApplication::OnRender(CommandBuffer& cmdBuffer)
 {
-    m_Emulator.Render(cmdBuffer);
+    m_Emulator->Render(cmdBuffer);
 
     cmdBuffer.BindGraphicsPipeline(*m_Pipeline);
     cmdBuffer.BindShaderBindingSet(*m_Shader, *m_BindingSet);
@@ -123,10 +117,34 @@ void EmulatorApplication::OnGUI()
                 filters.AddFilter("CHIP-8 ROM file", "ch8");
 
                 const String filepath = Path::OpenFileDialog("Open a rom file", "", filters, *GetWindow());
-                if (!m_Emulator.LoadROM(filepath))
+                if (!m_Emulator->LoadROM(filepath))
                     Exit();
             }
             ImGui::EndMenu();
+        }
+
+
+        static bool opened = false;
+
+        if (ImGui::MenuItem("Settings"))
+        {
+            opened = true;
+        }
+
+        if (opened)
+        {
+            if (ImGui::Begin("Settings", &opened, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoNav))
+            {
+                static int currentScale = 3;
+                const char* fields[] = { "1X", "2X", "4X", "8X", "16X", "32X" };
+                if (ImGui::Combo("Window Scale", &currentScale, fields, std::size(fields)))
+                {
+                    const int newScale = Math::Pow(2, currentScale);
+                    Ref<DesktopWindow> window = GetWindow().As<DesktopWindow>();
+                    window->Resize(64 * newScale, 32 * newScale);
+                }
+            }
+            ImGui::End();
         }
 
         if (ImGui::MenuItem("Exit"))

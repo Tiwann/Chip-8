@@ -22,7 +22,7 @@ public:
     void OnRender(CommandBuffer& cmdBuffer) override;
     void OnGUI() override;
 private:
-    Emulator m_Emulator;
+    Ref<Emulator> m_Emulator = nullptr;
     Ref<Texture> m_Texture = nullptr;
     Ref<Sampler> m_Sampler = nullptr;
     Ref<Shader> m_Shader = nullptr;
