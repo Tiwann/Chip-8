@@ -28,7 +28,6 @@ void Emulator::Update(const float deltaTime)
 void Emulator::CpuCycle()
 {
     const uint16_t opcode = Read(m_ProgramCounter);
-    m_ProgramCounter += 2;
     ExecuteOpcode(opcode);
 }
 
